@@ -1,6 +1,5 @@
 #ifndef NETWORK_MANAGER_H
 #define NETWORK_MANAGER_H
-
 #include <WiFi.h>
 #include <ArduinoMqttClient.h>
 
@@ -11,7 +10,6 @@ class NetworkManager {
     const char* broker = "broker.hivemq.com"; 
     int port = 1883;
     String baseTopic = "portenta/bike/"; 
-
     WiFiClient wifiClient;
     MqttClient mqttClient;
 
@@ -20,49 +18,41 @@ class NetworkManager {
       strcpy(ssid, wifiSsid);
       strcpy(pass, wifiPass);
     }
-
     void init() {
-      Serial.print("WiFi: "); Serial.println(ssid);
       WiFi.begin(ssid, pass);
-      int t = 0;
-      while (WiFi.status() != WL_CONNECTED && t < 20) { delay(500); Serial.print("."); t++; }
-      if (WiFi.status() == WL_CONNECTED) {
-        Serial.println("\nWiFi OK!");
-        connectMqtt();
-      } else { Serial.println("\nWiFi Fail"); }
+      int t=0; while(WiFi.status()!=WL_CONNECTED && t<20){ delay(500); Serial.print("."); t++; }
+      if(WiFi.status()==WL_CONNECTED) connectMqtt();
     }
+    void connectMqtt() { mqttClient.connect(broker, port); }
+    void update() { if(WiFi.status()==WL_CONNECTED) mqttClient.poll(); }
 
-    void connectMqtt() {
-      if (!mqttClient.connect(broker, port)) Serial.println("MQTT Error");
-      else Serial.println("MQTT Connected!");
-    }
-
-    void update() { if (WiFi.status() == WL_CONNECTED) mqttClient.poll(); }
-
-    // Funzione MEGA-PACK che manda tutto
-    void sendTelemetry(int bpm, float gForce, float slope, float temp) {
+    void sendTelemetry(int bpm, float gf, float slope, float lean, float vib, bool crash, float temp) {
       if (WiFi.status() == WL_CONNECTED) {
         if (!mqttClient.connected()) connectMqtt();
 
-        // Topic singoli per i Gauge dell'App
-        mqttClient.beginMessage(baseTopic + "bpm"); mqttClient.print(bpm); mqttClient.endMessage();
-        mqttClient.beginMessage(baseTopic + "gforce"); mqttClient.print(gForce); mqttClient.endMessage();
-        mqttClient.beginMessage(baseTopic + "slope"); mqttClient.print(slope); mqttClient.endMessage();
-        mqttClient.beginMessage(baseTopic + "temp"); mqttClient.print(temp); mqttClient.endMessage();
+        // Topic singoli per App dashboard veloce
+        mqttClient.beginMessage(baseTopic + "lean"); mqttClient.print(lean); mqttClient.endMessage();
+        mqttClient.beginMessage(baseTopic + "vib"); mqttClient.print(vib); mqttClient.endMessage();
+        
+        if(crash) { // Manda allarme solo se cadi
+             mqttClient.beginMessage(baseTopic + "alert"); mqttClient.print("CRASH!"); mqttClient.endMessage();
+        }
 
-        // JSON Completo per il log
+        // JSON COMPLETO (Per il Log/Database)
         String json = "{";
         json += "\"bpm\":" + String(bpm) + ",";
-        json += "\"gf\":" + String(gForce) + ",";
+        json += "\"gf\":" + String(gf) + ",";
         json += "\"slp\":" + String(slope) + ",";
+        json += "\"lean\":" + String(lean) + ",";
+        json += "\"vib\":" + String(vib) + ",";
+        json += "\"crash\":" + String(crash) + ",";
         json += "\"tmp\":" + String(temp);
         json += "}";
 
         mqttClient.beginMessage(baseTopic + "json");
         mqttClient.print(json);
         mqttClient.endMessage();
-
-        Serial.print(">> JSON: "); Serial.println(json);
+        Serial.println(">> SENT: " + json);
       }
     }
 };

@@ -3,11 +3,10 @@
 #include "DisplayManager.h"
 #include "NetworkManager.h"
 
-// --- I TUOI DATI ---
-const char* WIFI_SSID = "AndroidAP4055"; // Esempio
-const char* WIFI_PASS = "cerve110Ho!1";
+// --- DATI WIFI ---
+const char* WIFI_SSID = "bici"; // Togli gli spazi dall'hotspot!
+const char* WIFI_PASS = "password";
 
-// Istanziamo TUTTI i manager
 BleManager ble;
 ImuManager imu;
 DisplayManager display;
@@ -18,33 +17,30 @@ unsigned long lastSend = 0;
 void setup() {
   Serial.begin(115200);
   delay(1000);
-  
   display.init();
   imu.init();
   net.init();
-  ble.init(); // Ora c'è anche lui!
+  ble.init();
 }
 
 void loop() {
-  // 1. Aggiorna Connessioni e Sensori
   net.update();
   ble.update();
   imu.update();
 
-  // 2. Invio e Grafica (5Hz)
   if (millis() - lastSend > 200) {
     lastSend = millis();
     
-    // Raccogli tutti i dati
+    // Raccogli i dati
     int bpm = ble.getBpm();
     float gf = imu.getGForce();
     float sl = imu.getSlope();
+    float ln = imu.getLean(); // Piega
+    float vb = imu.getVibration(); // Vibrazione
+    bool cr = imu.isCrash();
     float tm = imu.getTemp();
 
-    // Aggiorna Display Fisico
-    display.drawTelemetry(bpm, gf, sl, tm, (WiFi.status() == WL_CONNECTED), ble.isConnected());
-
-    // Manda all'App
-    net.sendTelemetry(bpm, gf, sl, tm);
+    display.drawTelemetry(bpm, sl, ln, vb, cr);
+    net.sendTelemetry(bpm, gf, sl, ln, vb, cr, tm);
   }
 }
