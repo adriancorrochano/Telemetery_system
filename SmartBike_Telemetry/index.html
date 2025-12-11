@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Smart Bike Telemetry Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Leaflet (map) -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+
+  <!-- Simple styling -->
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0f172a;
+      color: #e5e7eb;
+    }
+    header {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid #1f2937;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 1.3rem;
+    }
+    #connectionStatus {
+      font-size: 0.85rem;
+    }
+    #connectionStatus span {
+      padding: 0.2rem 0.5rem;
+      border-radius: 999px;
+    }
+    .status-ok {
+      background: #16a34a33;
+      color: #bbf7d0;
+    }
+    .status-bad {
+      background: #b91c1c33;
+      color: #fecaca;
+    }
+    main {
+      padding: 1rem 1.5rem;
+      display: grid;
+      grid-template-columns: minmax(0, 2fr) minmax(0, 1.5fr);
+      grid-template-rows: auto auto;
+      gap: 1rem;
+    }
+    @media (max-width: 900px) {
+      main {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    /* Controls */
+    #controls {
+      grid-column: 1 / -1;
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 0.5rem;
+    }
+    button {
+      border: none;
+      border-radius: 999px;
+      padding: 0.5rem 1.2rem;
+      font-size: 0.95rem;
+      cursor: pointer;
+      background: #1d4ed8;
+      color: white;
+    }
+    button.secondary {
+      background: #374151;
+    }
+    button:disabled {
+      opacity: 0.4;
+      cursor: default;
+    }
+    #sessionStatus {
+      font-size: 0.9rem;
+      opacity: 0.8;
+    }
+
+    /* Cards */
+    .card {
+      background: #020617;
+      border-radius: 0.75rem;
+      padding: 0.8rem 1rem;
+      border: 1px solid #1f2937;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    }
+    .card h2 {
+      margin: 0 0 0.5rem 0;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #e5e7eb;
+    }
+    .card small {
+      color: #9ca3af;
+    }
+
+    /* Map */
+    #map {
+      width: 100%;
+      height: 320px;
+      border-radius: 0.75rem;
+      overflow: hidden;
+    }
+
+    /* Stats grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.75rem;
+    }
+    .stat {
+      padding: 0.5rem 0;
+    }
+    .stat-label {
+      font-size: 0.8rem;
+      color: #9ca3af;
+    }
+    .stat-value {
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    /* Chart canvas */
+    #chartContainer {
+      height: 260px;
+    }
+    #speedHrChart {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Summary */
+    #summaryList {
+      font-size: 0.9rem;
+      line-height: 1.4;
+    }
+    #summaryList dt {
+      font-weight: 600;
+      color: #e5e7eb;
+    }
+    #summaryList dd {
+      margin: 0 0 0.4rem 0;
+      color: #9ca3af;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Smart Bike Telemetry – Web Dashboard</h1>
+    <div id="connectionStatus">
+      MQTT: <span id="mqttStatus" class="status-bad">Disconnected</span>
+    </div>
+  </header>
+
+  <main>
+    <section id="controls" class="card">
+      <div>
+        <button id="startBtn">Start Ride</button>
+        <button id="stopBtn" class="secondary" disabled>Finish Ride</button>
+      </div>
+      <div id="sessionStatus">Session: idle</div>
+    </section>
+
+    <section class="card">
+      <h2>Map – Live Track</h2>
+      <small>Shows GPS track while recording</small>
+      <div id="map"></div>
+    </section>
+
+    <section class="card">
+      <h2>Live Stats</h2>
+      <div class="stats-grid">
+        <div class="stat">
+          <div class="stat-label">Speed (km/h)</div>
+          <div class="stat-value" id="liveSpeed">--</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Heart Rate (bpm)</div>
+          <div class="stat-value" id="liveBpm">--</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Distance (km)</div>
+          <div class="stat-value" id="liveDistance">0.00</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">G-Force</div>
+          <div class="stat-value" id="liveG">--</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" id="chartCard">
+      <h2>Speed & Heart Rate</h2>
+      <small>Live while recording</small>
+      <div id="chartContainer">
+        <canvas id="speedHrChart"></canvas>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Ride Summary</h2>
+      <small>Filled after pressing "Finish Ride"</small>
+      <dl id="summaryList">
+        <dt>Total Time</dt><dd id="sumTime">--</dd>
+        <dt>Total Distance</dt><dd id="sumDistance">--</dd>
+        <dt>Average Speed</dt><dd id="sumAvgSpeed">--</dd>
+        <dt>Max Speed</dt><dd id="sumMaxSpeed">--</dd>
+        <dt>Average HR</dt><dd id="sumAvgHr">--</dd>
+        <dt>Max HR</dt><dd id="sumMaxHr">--</dd>
+      </dl>
+    </section>
+  </main>
+
+  <!-- MQTT.js -->
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <!-- Leaflet -->
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <script>
+    /********** CONFIG **********/
+    const MQTT_URL = "wss://broker.hivemq.com:8884/mqtt";
+    const MQTT_TOPIC = "portenta/bike/json"; // change if your topic differs
+
+    /********** STATE **********/
+    let client = null;
+    let sessionActive = false;
+    let sessionStartTime = null;
+    let lastPoint = null;
+    let sessionPoints = []; // {time, lat, lon, spd, bpm}
+
+    /********** DOM ELEMENTS **********/
+    const mqttStatusEl = document.getElementById("mqttStatus");
+    const liveSpeedEl = document.getElementById("liveSpeed");
+    const liveBpmEl = document.getElementById("liveBpm");
+    const liveDistanceEl = document.getElementById("liveDistance");
+    const liveGEl = document.getElementById("liveG");
+    const sessionStatusEl = document.getElementById("sessionStatus");
+
+    const sumTimeEl = document.getElementById("sumTime");
+    const sumDistanceEl = document.getElementById("sumDistance");
+    const sumAvgSpeedEl = document.getElementById("sumAvgSpeed");
+    const sumMaxSpeedEl = document.getElementById("sumMaxSpeed");
+    const sumAvgHrEl = document.getElementById("sumAvgHr");
+    const sumMaxHrEl = document.getElementById("sumMaxHr");
+
+    const startBtn = document.getElementById("startBtn");
+    const stopBtn = document.getElementById("stopBtn");
+
+    /********** MAP (Leaflet) **********/
+    const map = L.map("map").setView([46.0, 8.9], 13); // dummy initial view
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "© OpenStreetMap",
+    }).addTo(map);
+
+    let trackLatLngs = [];
+    const polyline = L.polyline(trackLatLngs, { color: "lime" }).addTo(map);
+    let lastMarker = null;
+
+    function updateMap(lat, lon) {
+      const latLng = [lat, lon];
+      if (sessionActive) {
+        trackLatLngs.push(latLng);
+        polyline.setLatLngs(trackLatLngs);
+      }
+      if (!lastMarker) {
+        lastMarker = L.circleMarker(latLng, {
+          radius: 5,
+          color: "#38bdf8",
+        }).addTo(map);
+      } else {
+        lastMarker.setLatLng(latLng);
+      }
+      // Fit map bounds only on first points
+      if (trackLatLngs.length === 1) {
+        map.setView(latLng, 15);
+      }
+    }
+
+    /********** CHART (Chart.js) **********/
+    const ctx = document.getElementById("speedHrChart").getContext("2d");
+    const speedHrChart = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: [],
+        datasets: [
+          {
+            label: "Speed (km/h)",
+            data: [],
+            yAxisID: "y",
+            borderWidth: 2,
+            tension: 0.2,
+          },
+          {
+            label: "Heart Rate (bpm)",
+            data: [],
+            yAxisID: "y1",
+            borderWidth: 2,
+            borderDash: [4, 4],
+            tension: 0.2,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: {
+            title: {
+              display: true,
+              text: "Time (s)",
+            },
+          },
+          y: {
+            position: "left",
+            title: {
+              display: true,
+              text: "Speed",
+            },
+          },
+          y1: {
+            position: "right",
+            title: {
+              display: true,
+              text: "Heart Rate",
+            },
+            grid: {
+              drawOnChartArea: false,
+            },
+          },
+        },
+        plugins: {
+          legend: {
+            labels: {
+              color: "#e5e7eb",
+            },
+          },
+        },
+      },
+    });
+
+    function resetChart() {
+      speedHrChart.data.labels = [];
+      speedHrChart.data.datasets[0].data = [];
+      speedHrChart.data.datasets[1].data = [];
+      speedHrChart.update();
+    }
+
+    function addChartPoint(tSec, speed, bpm) {
+      speedHrChart.data.labels.push(tSec.toFixed(1));
+      speedHrChart.data.datasets[0].data.push(speed);
+      speedHrChart.data.datasets[1].data.push(bpm);
+      speedHrChart.update("none");
+    }
+
+    /********** MQTT CONNECTION **********/
+    function connectMqtt() {
+      client = mqtt.connect(MQTT_URL);
+
+      client.on("connect", () => {
+        mqttStatusEl.textContent = "Connected";
+        mqttStatusEl.className = "status-ok";
+        client.subscribe(MQTT_TOPIC, (err) => {
+          if (err) {
+            console.error("Subscribe error", err);
+          } else {
+            console.log("Subscribed to", MQTT_TOPIC);
+          }
+        });
+      });
+
+      client.on("reconnect", () => {
+        mqttStatusEl.textContent = "Reconnecting...";
+        mqttStatusEl.className = "status-bad";
+      });
+
+      client.on("close", () => {
+        mqttStatusEl.textContent = "Disconnected";
+        mqttStatusEl.className = "status-bad";
+      });
+
+      client.on("error", (err) => {
+        console.error("MQTT error:", err);
+      });
+
+      client.on("message", (topic, message) => {
+        if (topic === MQTT_TOPIC) {
+          handleTelemetry(message.toString());
+        }
+      });
+    }
+
+    /********** TELEMETRY HANDLER **********/
+    function handleTelemetry(payload) {
+      let data;
+      try {
+        data = JSON.parse(payload);
+      } catch (e) {
+        console.warn("Invalid JSON:", payload);
+        return;
+      }
+
+      const bpm = data.bpm ?? null;
+      const gf = data.gf ?? null;
+      const lat = data.lat ?? null;
+      const lon = data.lon ?? null;
+      const spd = data.spd ?? null; // km/h
+      const odo = data.odo ?? null; // km (from device)
+      const ts = Date.now();
+
+      // Update live stats
+      if (spd != null) liveSpeedEl.textContent = spd.toFixed(1);
+      if (bpm != null) liveBpmEl.textContent = bpm.toString();
+      if (gf != null) liveGEl.textContent = gf.toFixed(2);
+      if (odo != null) liveDistanceEl.textContent = odo.toFixed(2);
+
+      // Update map if gps valid
+      if (lat != null && lon != null && !isNaN(lat) && !isNaN(lon)) {
+        updateMap(lat, lon);
+      }
+
+      if (sessionActive && lat != null && lon != null && spd != null) {
+        const tSec = (ts - sessionStartTime) / 1000;
+        sessionPoints.push({
+          time: ts,
+          tSec,
+          lat,
+          lon,
+          spd,
+          bpm,
+        });
+        addChartPoint(tSec, spd, bpm ?? null);
+      }
+
+      lastPoint = data;
+    }
+
+    /********** SESSION CONTROL **********/
+    function startSession() {
+      sessionActive = true;
+      sessionStartTime = Date.now();
+      sessionPoints = [];
+      trackLatLngs = [];
+      polyline.setLatLngs(trackLatLngs);
+      if (lastMarker) {
+        map.removeLayer(lastMarker);
+        lastMarker = null;
+      }
+      resetChart();
+
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+      sessionStatusEl.textContent = "Session: recording...";
+    }
+
+    function stopSession() {
+      sessionActive = false;
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+      sessionStatusEl.textContent = "Session: finished";
+
+      computeSummary();
+    }
+
+    function computeSummary() {
+      if (sessionPoints.length < 2) {
+        sumTimeEl.textContent = "Not enough data";
+        sumDistanceEl.textContent = "--";
+        sumAvgSpeedEl.textContent = "--";
+        sumMaxSpeedEl.textContent = "--";
+        sumAvgHrEl.textContent = "--";
+        sumMaxHrEl.textContent = "--";
+        return;
+      }
+
+      const startTime = sessionPoints[0].time;
+      const endTime = sessionPoints[sessionPoints.length - 1].time;
+      const totalSec = (endTime - startTime) / 1000;
+
+      // Distance from lat/lon via Haversine
+      let totalMeters = 0;
+      for (let i = 1; i < sessionPoints.length; i++) {
+        const p1 = sessionPoints[i - 1];
+        const p2 = sessionPoints[i];
+        totalMeters += haversine(p1.lat, p1.lon, p2.lat, p2.lon);
+      }
+      const totalKm = totalMeters / 1000;
+
+      // Speeds
+      const speeds = sessionPoints.map((p) => p.spd);
+      const avgSpeed = speeds.reduce((a, b) => a + b, 0) / speeds.length;
+      const maxSpeed = Math.max(...speeds);
+
+      // Heart rate (filter null)
+      const hrValues = sessionPoints
+        .map((p) => p.bpm)
+        .filter((v) => v != null && !isNaN(v));
+      let avgHr = null;
+      let maxHr = null;
+      if (hrValues.length > 0) {
+        avgHr = hrValues.reduce((a, b) => a + b, 0) / hrValues.length;
+        maxHr = Math.max(...hrValues);
+      }
+
+      // Fill summary DOM
+      sumTimeEl.textContent = formatDuration(totalSec);
+      sumDistanceEl.textContent = totalKm.toFixed(2) + " km";
+      sumAvgSpeedEl.textContent = avgSpeed.toFixed(1) + " km/h";
+      sumMaxSpeedEl.textContent = maxSpeed.toFixed(1) + " km/h";
+      sumAvgHrEl.textContent =
+        avgHr != null ? avgHr.toFixed(0) + " bpm" : "--";
+      sumMaxHrEl.textContent =
+        maxHr != null ? maxHr.toFixed(0) + " bpm" : "--";
+    }
+
+    /********** HELPERS **********/
+    function haversine(lat1, lon1, lat2, lon2) {
+      const R = 6371000; // meters
+      const toRad = (d) => (d * Math.PI) / 180;
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(toRad(lat1)) *
+          Math.cos(toRad(lat2)) *
+          Math.sin(dLon / 2) *
+          Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+
+    function formatDuration(sec) {
+      const h = Math.floor(sec / 3600);
+      const m = Math.floor((sec % 3600) / 60);
+      const s = Math.floor(sec % 60);
+      if (h > 0) {
+        return `${h}h ${m}m ${s}s`;
+      } else if (m > 0) {
+        return `${m}m ${s}s`;
+      } else {
+        return `${s}s`;
+      }
+    }
+
+    /********** EVENT LISTENERS **********/
+    startBtn.addEventListener("click", startSession);
+    stopBtn.addEventListener("click", stopSession);
+
+    /********** INIT **********/
+    connectMqtt();
+  </script>
+</body>
+</html>
