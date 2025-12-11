@@ -16,8 +16,8 @@ using namespace rtos;
 using namespace std::chrono;
 
 // ---- WIFI CREDENTIALS ----
-const char* WIFI_SSID = "Esu_Mob";
-const char* WIFI_PASS = "09141414";
+const char* WIFI_SSID = "Adrian";
+const char* WIFI_PASS = "puta1234";
 
 // ---- GLOBAL OBJECTS ----
 BLEManager     ble;
@@ -43,7 +43,7 @@ void bleTask() {
     while(!systemReady) ThisThread::sleep_for(milliseconds(100)); // Wait for setup
     while (true) {
         ble.update();
-        ThisThread::sleep_for(milliseconds(20));
+        ThisThread::sleep_for(milliseconds(10));
     }
 }
 
@@ -89,7 +89,7 @@ void netTask() {
         net.update(); // Keep MQTT alive
         
         static unsigned long lastSendTime = 0;
-        if (millis() - lastSendTime > 1000) {
+        if (millis() - lastSendTime > 4000) {
             // Gather Data
             int bpm     = ble.getHeartRate(); 
             float gf    = imu.getGForce();
