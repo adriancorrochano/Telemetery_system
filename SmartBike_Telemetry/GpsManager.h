@@ -6,44 +6,43 @@
 class GpsManager {
   private:
     TinyGPSPlus gps; // The library that parses GPS text (NMEA)
-    double totalDistance = 0.0; // Odometer (Total km)
-    double lastLat = 0.0, lastLon = 0.0; // Previous position
-    unsigned long startTime = 0; // When we started moving
-    bool hasFix = false; // Do we have satellite signal?
-    bool firstPoint = true; // Flag for the very first coordinate
+    double totalDistance = 0.0; //our total distnace in km
+    double lastLat = 0.0, lastLon = 0.0; //last position
+    unsigned long startTime = 0; //exact time when we started moving
+    bool hasFix = false; //a boolean that we set to true if we have satellite signal
+    bool firstPoint = false; // Fllag for the very first coordinate
 
   public:
     void init() {
       // Start serial communication with GPS module
-      // Portenta uses Serial1 (Pin 13/14)
+      //we use the portenta Serial1 specifically Pin 13/14
       Serial1.begin(9600); 
     }
 
     void update() {
-      // Read all characters coming from the GPS wire
+      //we read all the data coming from the GPS wire
       while (Serial1.available() > 0) {
         gps.encode(Serial1.read());
       }
 
       // If we have a valid location signal...
       if (gps.location.isValid()) {
-        if (!hasFix) {
+        if (!hasFix) {  
           hasFix = true;
           startTime = millis(); // Start the timer for avg speed
         }
 
-        if (firstPoint) {
-          // Save starting point
+        if (!firstPoint) {
+          //we save the starting point
           lastLat = gps.location.lat();
           lastLon = gps.location.lng();
-          firstPoint = false;
+          firstPoint = true;//we set it to true
         } else {
           // CALCULATE DISTANCE (Odometer)
-          // Calculate meters between current point and previous point
+          // Calculate meters between current point and previous point, for this we use the library of the gps and the methods it provides
           double dist = gps.distanceBetween(gps.location.lat(), gps.location.lng(), lastLat, lastLon);
           
-          // Noise Filter: Only add distance if we moved more than 2 meters
-          // (GPS drifts a bit even when standing still)
+          //to filter noise we thought of only adding distance if we moved more than 2 meters
           if (dist > 2.0) {
             totalDistance += dist;
             lastLat = gps.location.lat();
@@ -61,15 +60,17 @@ class GpsManager {
     double getSpeed() { return gps.speed.kmph(); }
     int getSats() { return gps.satellites.value(); }
     
-    // CALCULATED METRIC: Odometer (in Km)
+    //getter for the distance
     double getOdometer() { return totalDistance / 1000.0; } 
     
-    // CALCULATED METRIC: Average Speed (km/h)
+    //we calculate the average Speed (km/h)
     double getAvgSpeed() {
-      if (totalDistance < 10 || !hasFix) return 0.0;
+      if (totalDistance < 10 || !hasFix) 
+        return 0.0;
       // Convert millis to hours
       double hours = (millis() - startTime) / 3600000.0;
-      if (hours <= 0) return 0.0;
+      if (hours <= 0) 
+        return 0.0;
       // Distance / Time
       return (totalDistance / 1000.0) / hours; 
     }

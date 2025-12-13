@@ -4,13 +4,13 @@
 #include <WiFi.h>
 #include <ArduinoMqttClient.h>
 
-//DADADA
+
 class NetworkManager {
   private:
     char ssid[50];
     char pass[50];
-    const char* broker = "broker.hivemq.com"; // The Cloud Server
-    int port = 1883; // Standard MQTT port
+    const char* broker = "broker.hivemq.com"; // our cloud server
+    int port = 1883; // this is our MQTT port
     String baseTopic = "portenta/bike/"; 
     WiFiClient wifiClient;
     MqttClient mqttClient;
@@ -25,41 +25,51 @@ class NetworkManager {
       Serial.print("Connecting WiFi: "); Serial.println(ssid);
       WiFi.begin(ssid, pass);
       
-      // Try connecting for 10 seconds (20 * 500ms)
+      //we try connecting for 10 seconds 
       int t = 0;
-      while(WiFi.status()!=WL_CONNECTED && t<20) { 
+      while(WiFi.status() != WL_CONNECTED && t<20) { 
         delay(500); 
         Serial.print("."); 
         t++; 
       }
       
       if(WiFi.status() == WL_CONNECTED) {
-        Serial.println("\nWiFi OK!");
-        connectMqtt(); // Only connect to Cloud if WiFi works
-      } else { 
+        Serial.println("\nWiFi OK and connected!");
+        connectMqtt(); //we connect to Cloud if WiFi works
+      } 
+      else { 
         Serial.println("\nWiFi Failed."); 
       }
     }
 
     void connectMqtt() {
-      // Connect to HiveMQ broker
-      if (!mqttClient.connect(broker, port)) Serial.println("MQTT Error");
-      else Serial.println("MQTT Connected!");
+      //we connect to HiveMQ broker
+      if (!mqttClient.connect(broker, port)) {
+        Serial.println("MQTT Error");
+      }
+      else {
+        Serial.println("MQTT Connected!");
+      }    
     }
 
     // Keep the connection alive
-    void update() { if(WiFi.status()==WL_CONNECTED) mqttClient.poll(); }
-
-    // THE MAIN SENDING FUNCTION
-    // Takes ALL metrics and sends them to the cloud
+    void update() { 
+      if(WiFi.status()==WL_CONNECTED) {
+        mqttClient.poll(); 
+      } 
+    }
+ 
+    //THE MAIN SENDING FUNCTION: it takes ALL metrics and sends them to the cloud
     void sendTelemetry(int bpm, float gf, float slope, float lean, float vib, bool crash, 
                        float temp, double lat, double lon, double alt, double spd, double odo, double avg) {
       
       if (WiFi.status() == WL_CONNECTED) {
-        // Reconnect if connection dropped
-        if (!mqttClient.connected()) connectMqtt();
-
-        // 1. Send SINGLE TOPICS (For Real-time Dashboard Gauges)
+        //tries to reconnect if connection dropped
+        if (!mqttClient.connected()) {
+          connectMqtt();
+        }
+          
+        //it sends SINGLE TOPICS (for real time Dashboard Gauges)
         mqttClient.beginMessage(baseTopic + "bpm"); mqttClient.print(bpm); mqttClient.endMessage();
         mqttClient.beginMessage(baseTopic + "gf");  mqttClient.print(gf);  mqttClient.endMessage();
         mqttClient.beginMessage(baseTopic + "slp"); mqttClient.print(slope); mqttClient.endMessage();
@@ -74,7 +84,7 @@ class NetworkManager {
         mqttClient.beginMessage(baseTopic + "odo"); mqttClient.print(odo); mqttClient.endMessage();
         mqttClient.beginMessage(baseTopic + "avg"); mqttClient.print(avg); mqttClient.endMessage();
 
-        // 2. Send FULL JSON (For Data Logging / Database)
+        // We send a FULL JSON for Data Logging. you can also think about it as our database
         // We build a single text string with all data
         String json = "{";
         json += "\"bpm\":" + String(bpm) + ",";

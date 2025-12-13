@@ -15,24 +15,25 @@ public:
             while (1);
         }
         Serial.println("BLE Manager started. Scanning...");
-        BLE.scan();
+        BLE.scan(); //scanning for devices
     }
 
     // This checks for connections and reads data
     void update() {
-        // 1. Keep BLE radio active
+        //Keep BLE radio active
         BLE.poll();
 
-        // CASE A: We are NOT connected. Look for a device.
+        // CASE A: We are NOT connected so we keep looking for a device.
         if (!_isConnected) {
             BLEDevice foundDevice = BLE.available();
 
             if (foundDevice) {
+                //if the device found contains the name Polar
                 if (foundDevice.localName().indexOf("Polar") >= 0) {
-
                     BLE.stopScan();
                     Serial.println("Found Polar! Connecting...");
 
+                    //if the connection was succesful
                     if (foundDevice.connect()) {
                         Serial.println("Connected!");
                         _peripheral = foundDevice; // Save the device
@@ -65,7 +66,7 @@ public:
             }
         }
 
-        // CASE B: We ARE connected. Read the data.
+        // CASE B: We ARE connected so we read the data.
         else {
             // Check if device is still actually connected
             if (!_peripheral.connected()) {
@@ -80,7 +81,7 @@ public:
             if (_hrChar.valueUpdated()) {
                 const uint8_t* bytes = _hrChar.value();
 
-                // Your parsing logic
+                //The parsing logic to decode the data from received from the sensor
                 _currentHeartRate = (bytes[0] & 1) ? (bytes[1] | (bytes[2] << 8)) : bytes[1];
 
                 // Debug print inside the manager
@@ -90,7 +91,7 @@ public:
         }
     }
 
-    // Helper to get the value in your main loop if you need it later
+    //Our getters
     int getHeartRate() {
         return _currentHeartRate;
     }
