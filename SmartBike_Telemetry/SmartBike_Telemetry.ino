@@ -40,7 +40,8 @@ volatile bool systemReady = false; // Prevents threads from reading sensors befo
 // ----------------- TASK FUNCTIONS -----------------
 
 void bleTask() {
-    while(!systemReady) ThisThread::sleep_for(milliseconds(100)); // Wait for setup
+    while(!systemReady) 
+        ThisThread::sleep_for(milliseconds(100)); // Wait for setup
     while (true) {
         ble.update();
         ThisThread::sleep_for(milliseconds(10));
@@ -65,7 +66,8 @@ void imuTask() {
 
 void netTask() {
     // 1. Wait for system to fully boot
-    while(!systemReady) ThisThread::sleep_for(milliseconds(100));
+    while(!systemReady) 
+        ThisThread::sleep_for(milliseconds(100));
     
     while (true) {
         // 2. Check Connection Status

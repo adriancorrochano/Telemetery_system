@@ -19,7 +19,7 @@ class GpsManager {
       Serial1.begin(9600); 
     }
 
-    void update() {
+    /*void update() {
       //we read all the data coming from the GPS wire
       while (Serial1.available() > 0) {
         gps.encode(Serial1.read());
@@ -49,6 +49,23 @@ class GpsManager {
             lastLon = gps.location.lng();
           }
         }
+      }
+    }*/
+
+    void init() {
+      Serial.begin(115200); // Comunicazione col PC veloce
+      
+      // Prova 9600 (Standard Waveshare)
+      Serial1.begin(9600); 
+      
+      // Se dopo vedi caratteri strani, prova a cambiare 9600 con 115200 o 38400 qui sotto
+      // Serial1.begin(115200); 
+    }
+
+    void loop() {
+      if (Serial1.available()) {
+        char c = Serial1.read();
+        Serial.write(c); // Stampa ESATTAMENTE quello che riceve
       }
     }
 
