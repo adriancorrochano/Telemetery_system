@@ -34,10 +34,10 @@ Thread imuThread(osPriorityNormal, 2048);
 Thread netThread(osPriorityNormal, 6000); 
 Thread displayThread(osPriorityLow, 4096);
 
-// ---- GLOBAL FLAGS ----
+// GLOBAL FLAG
 volatile bool systemReady = false; // Prevents threads from reading sensors before init
 
-// ----------------- TASK FUNCTIONS -----------------
+
 
 void bleTask() {
     while(!systemReady) 
@@ -118,7 +118,8 @@ void netTask() {
 }
 
 void displayTask() {
-    while(!systemReady) ThisThread::sleep_for(milliseconds(100));
+    while(!systemReady) 
+        ThisThread::sleep_for(milliseconds(100));
 
     while (true) {
         int bpm    = ble.getHeartRate();      
@@ -139,15 +140,14 @@ void displayTask() {
     }
 }
 
-// ----------------------- HELPER: LED STATUS -----------------------
+//LED STATUS 
 void setStatusColor(bool r, bool g, bool b) {
   digitalWrite(LEDR, r ? LOW : HIGH); // LOW is ON for Portenta
   digitalWrite(LEDG, g ? LOW : HIGH);
   digitalWrite(LEDB, b ? LOW : HIGH);
 }
 
-// ----------------------- SETUP -----------------------
-
+//SETUP
 void setup() {
     // 1. HARDWARE PROOF OF LIFE (RED LED)
     pinMode(LEDR, OUTPUT);
