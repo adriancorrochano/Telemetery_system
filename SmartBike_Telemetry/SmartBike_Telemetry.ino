@@ -15,18 +15,18 @@ using namespace mbed;
 using namespace rtos;
 using namespace std::chrono;
 
-// ---- WIFI CREDENTIALS ----
+// ---- WIFI CREDENTIALS 
 const char* WIFI_SSID = "Adrian";
 const char* WIFI_PASS = "puta1234";
 
-// ---- GLOBAL OBJECTS ----
+//GLOBAL OBJECTS
 BLEManager     ble;
 ImuManager     imu;
 GpsManager     gps;
 DisplayManager display;
 NetworkManager net(WIFI_SSID, WIFI_PASS);
 
-// ---- THREADS ----
+//THREADS
 // Reduced stack slightly to ensure we fit in RAM, but kept high enough for stability
 Thread bleThread(osPriorityHigh, 4096); 
 Thread gpsThread(osPriorityNormal, 2048); 
@@ -205,7 +205,7 @@ void setup() {
     setStatusColor(false, true, false); // GREEN = Success
 }
 
-// ----------------------- LOOP ------------------------
+//LOOP 
 void loop() {
     // Blink Green LED softly to show the Main Thread is alive
     digitalWrite(LEDG, LOW); 
