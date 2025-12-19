@@ -81,7 +81,7 @@ public:
             if (_hrChar.valueUpdated()) {
                 const uint8_t* bytes = _hrChar.value();
 
-                //The parsing logic to decode the data from received from the sensor
+                //The parsing logic to decode the data from the sensor
                 _currentHeartRate = (bytes[0] & 1) ? (bytes[1] | (bytes[2] << 8)) : bytes[1];
 
                 // Debug print inside the manager

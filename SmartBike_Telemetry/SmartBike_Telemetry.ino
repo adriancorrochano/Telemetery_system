@@ -1,8 +1,3 @@
-/*
- * SMART BIKE TELEMETRY - HARDWARE DIAGNOSTIC MODE
- * Status: DEBUGGING "SILENT FREEZE"
- */
-
 #include "mbed.h"
 #include "BleManager.h"
 #include "ImuManager.h"
@@ -15,9 +10,9 @@ using namespace mbed;
 using namespace rtos;
 using namespace std::chrono;
 
-// ---- WIFI CREDENTIALS 
+// WIFI CREDENTIALS 
 const char* WIFI_SSID = "Adrian";
-const char* WIFI_PASS = "puta1234";
+const char* WIFI_PASS = "12345678";
 
 //GLOBAL OBJECTS
 BLEManager     ble;

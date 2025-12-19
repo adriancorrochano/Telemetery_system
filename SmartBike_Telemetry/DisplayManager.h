@@ -17,6 +17,8 @@ class DisplayManager {
     void drawTelemetry(int bpm, float gf, double speed, int sats, bool wifiOk, bool bleOk) {
       u8g2.clearBuffer();
 
+      u8g2.clearBuffer();
+
       // Header
       u8g2.setFont(u8g2_font_helvB08_tr);
       u8g2.drawStr(2, 10, "SMART BIKE");
@@ -26,29 +28,17 @@ class DisplayManager {
       if(wifiOk) u8g2.drawStr(90, 10, "W");
       if(bleOk)  u8g2.drawStr(105, 10, "B");
 
-      //speed displayed
-      u8g2.setFont(u8g2_font_ncenB18_tr);
-      u8g2.setCursor(5, 50);
-      u8g2.print(speed, 1);
-      u8g2.setFont(u8g2_font_helvB08_tr); u8g2.print(" km/h");
-
-      //Heart rate (bpm) displayed
-      u8g2.setCursor(5, 75); 
-      u8g2.print("HR: "); (bpm>0)? u8g2.print(bpm) : u8g2.print("--");
-
-      //g-force displayed
-      u8g2.setCursor(5, 90); 
-      u8g2.print("G: "); u8g2.print(gf, 2);
-
-      // number of satellites displayed
-      u8g2.setCursor(5, 115);
-      u8g2.print("Sats: "); 
-      u8g2.print(sats);
-      //if(sats < 4) 
-        //u8g2.print(" (No Fix)");
+      u8g2.setFont(u8g2_font_ncenB12_tr);
+      u8g2.setCursor(0, 30); u8g2.print("SPD: "); u8g2.print(speed, 1); u8g2.print(" km/h");
+      u8g2.setCursor(0, 45); u8g2.print("HR: "); u8g2.print(bpm);
+      u8g2.setCursor(0, 60); u8g2.print("ACC: "); u8g2.print(acceleration, 2);
+      u8g2.setCursor(0, 75); u8g2.print("LATG: "); u8g2.print(lateralG, 2);
+      u8g2.setCursor(0, 90); u8g2.print("CLIMB: "); u8g2.print(climbAngle, 1); u8g2.print("°");
+      u8g2.setCursor(0, 105); u8g2.print("Crash: "); u8g2.print(crash ? "YES" : "NO");
 
       u8g2.drawFrame(0, 0, 128, 128);
       u8g2.sendBuffer();
+    
     }
 };
 #endif

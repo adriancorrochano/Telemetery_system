@@ -19,7 +19,7 @@ class GpsManager {
       Serial1.begin(9600); 
     }
 
-    /*void update() {
+    void update() {
       //we read all the data coming from the GPS wire
       while (Serial1.available() > 0) {
         gps.encode(Serial1.read());
@@ -50,7 +50,7 @@ class GpsManager {
           }
         }
       }
-    }*/
+    }
 
     void init() {
       Serial.begin(115200); // Comunicazione col PC veloce
@@ -92,7 +92,7 @@ class GpsManager {
       return (totalDistance / 1000.0) / hours; 
     }
 
-    // Helper to format time as "HH:MM:SS"
+    // Helper to format time as HH:MM:SS
     String getTimeStr() {
       if (!gps.time.isValid()) return "--:--:--";
       char sz[10];
